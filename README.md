@@ -189,3 +189,9 @@ Another user should be able to reproduce the Python encryption and integrity tes
 3. Obtaining the encryption key securely outside the repository.
 4. Running the commands in this README.
 5. Performing the authorized firewall tests using the assessor-provided network values.
+
+## 16. GitHub Repository
+
+Repository:
+
+`https://github.com/seba michel/cryptography-network-security-exam`
