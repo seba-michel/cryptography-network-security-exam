@@ -1,0 +1,6 @@
+Student ID: TEST001
+Name: Sample Student
+Programme: Electronics and Telecommunications
+Year: 4
+Course: Cryptography and Network Security
+Mark: 75

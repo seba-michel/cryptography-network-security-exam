@@ -1,0 +1,18 @@
+# Encryption and private keys
+*.key
+*.pem
+*.crt
+
+# Environment and secrets
+.env
+
+# Python generated files
+__pycache__/
+*.pyc
+
+# Generated encrypted test files
+*.bin
+
+# Operating-system files
+.DS_Store
+Thumbs.db
