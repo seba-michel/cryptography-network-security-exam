@@ -1,0 +1,157 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{booktabs,longtable,array}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\definecolor{codebg}{gray}{0.95}
+\lstset{basicstyle=\ttfamily\footnotesize,backgroundcolor=\color{codebg},breaklines=true,
+        breakatwhitespace=false,frame=single,columns=fullflexible,keepspaces=true,showstringspaces=false}
+
+\newcommand{\repourl}{\url{https://github.com/rubimburagad85-hash/cryptography-network-security-exam}}
+
+\title{Cryptography and Network Security\\ \large Integrated Situation --- Technical Report\\
+        \normalsize ETTCS801 \,|\, ULK Polytechnic Institute}
+\author{Gad RUBIMBURA \\ Registration Number: 4202670049}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\bigskip
+
+%---------------------------------------------------------------------
+\section{Introduction}
+A polytechnic institute stores student records on a central server and transfers files between two campuses[cite: 1].
+A security review found weak staff passwords, outdated software, unencrypted file transfers and guest-network
+access to the records server, and repeated connection attempts from an unfamiliar external address were observed[cite: 1].
+This report documents the risk assessment, the Python encryption and integrity toolkit, and the firewall
+rules produced to address these findings[cite: 1]. All source files are in the GitHub repository (Section~\ref{sec:conclusion}).
+
+%---------------------------------------------------------------------
+\section{Risk Assessment}
+\subsection{Assets, vulnerabilities and consequences}
+\begin{longtable}{@{}p{0.3cm}p{3.3cm}p{4.2cm}p{6.3cm}@{}}
+\toprule
+\# & Asset & Vulnerability & Possible consequence\\ \midrule\endhead
+R1 & Staff accounts and credentials & Weak passwords; repeated external login attempts &
+Account takeover; records read, altered or deleted; misuse under a staff identity[cite: 1].\\[4pt]
+R2 & Student records server & Guest network can reach the server; outdated software &
+Scanning and exploitation of known flaws; data breach, ransomware, outage; reputational and legal harm[cite: 1].\\[4pt]
+R3 & Record files in transit between campuses & Unencrypted file transfer &
+Eavesdropping or man-in-the-middle; records disclosed or silently modified[cite: 1].\\
+\bottomrule
+\end{longtable}
+
+\subsection{Risk ranking}
+Likelihood and impact are scored from 1 (low) to 5 (high); the score is their product[cite: 1].
+\begin{center}
+\begin{tabular}{@{}clccc@{}}
+\toprule
+Rank & Risk & Likelihood & Impact & Score\\ \midrule
+1 & R1 -- Weak staff passwords & 5 & 5 & 25\\
+2 & R2 -- Guest access / outdated software & 4 & 5 & 20\\
+3 & R3 -- Unencrypted transfers & 3 & 4 & 12\\ \bottomrule
+\end{tabular}
+\end{center}
+\textbf{Reasoning.} R1 ranks first because attacks are already occurring and weak passwords need little skill to
+defeat; one compromised account exposes all data the user can reach[cite: 1]. R2 is second: guests are many and untrusted, and
+known exploits exist for outdated software, with very high impact because all records reside on one server[cite: 1]. R3 ranks
+third because interception requires a position on the inter-campus path, although success exposes and allows tampering with complete files[cite: 1].
+
+\subsection{Recommended controls}
+\begin{center}
+\begin{tabular}{@{}lp{11cm}@{}}
+\toprule
+Risk & Control\\ \midrule
+R1 & Strong password policy (minimum 12 characters, no reuse), multi-factor authentication, account lockout / rate limiting[cite: 1].\\
+R2 & Network segmentation with firewall rules denying guest access to the server, plus a regular patching schedule[cite: 1].\\
+R3 & Encrypt files before transfer (AES-256-GCM) and use secure channels (SFTP/TLS/VPN), with SHA-256 integrity checks[cite: 1].\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%---------------------------------------------------------------------
+\section{Encryption and Integrity Application}
+\subsection{Design}
+The programme \texttt{src/secure\_records.py} is written in Python and uses the \texttt{cryptography} library[cite: 1].
+\begin{itemize}[nosep]
+  \item \textbf{Encryption} -- AES-256-GCM authenticated encryption. A random 256-bit key is generated once and stored
+        \emph{outside} the repository (default \texttt{\textasciitilde/.ulk\_keys/records.key}); the tool refuses a key path inside a git
+        repository[cite: 1]. Each encryption uses a fresh random 96-bit nonce[cite: 1]. The output file is
+        \texttt{header (4 bytes) \(\|\) nonce (12 bytes) \(\|\) ciphertext \(\|\) GCM tag (16 bytes)}[cite: 1].
+  \item \textbf{Decryption} -- reads the nonce, decrypts and authenticates[cite: 1]. A wrong key or any modified byte raises an
+        authentication failure, reported as a clean error message[cite: 1]. With \texttt{--original} the decrypted file's SHA-256
+        is compared with the original's to prove the contents match[cite: 1].
+  \item \textbf{Integrity} -- \texttt{hash} stores the SHA-256 digest of a file in a baseline file (\texttt{hashes.json});
+        \texttt{check} recomputes the digest and reports \emph{UNCHANGED} or \emph{MODIFIED}[cite: 1].
+  \item \textbf{Error handling} -- missing files, directories, empty files, invalid or missing keys, corrupt or non-encrypted
+        input and corrupt baselines are caught and reported with a message and exit code, never a traceback[cite: 1].
+\end{itemize}
+
+\subsection{Test evidence}
+Ten automated unit tests (round trip, ciphertext differs from plaintext, tamper detection, wrong key, missing key,
+missing/empty/invalid input, hash change detection, CLI error code) all pass[cite: 1]:
+\begin{lstlisting}
+$ python3 -m unittest discover -s tests -v
+...
+Ran 10 tests in 0.008s
+OK
+\end{lstlisting}
+Full demonstration output (\texttt{tests/run\_demo.sh}); the two SHA-256 values match after decryption, and the
+modified file is flagged[cite: 1]:
+{\footnotesize
+\lstinputlisting[basicstyle=\ttfamily\tiny]{../tests/crypto_demo_output.txt}}
+
+%---------------------------------------------------------------------
+\section{Network Traffic Filtering}
+\subsection{Laboratory setup}
+The laboratory environment uses the records server IP \texttt{192.168.100.10}, authorised staff network \texttt{192.168.10.0/24}, guest network \texttt{10.0.99.0/24}, firewall tool \texttt{iptables}, and the tested service port is \texttt{tcp/443}[cite: 1].
+
+\subsection{Firewall rules}
+Rules are in \texttt{firewall/records\_server\_firewall.sh} and use a dedicated iptables chain so they can be removed cleanly[cite: 1].
+In order of evaluation:
+\begin{enumerate}[nosep]
+  \item Accept established/related traffic (and loopback) so existing sessions keep working[cite: 1].
+  \item \textbf{Block guest \(\rightarrow\) server (all ports):} \texttt{-s GUEST\_NET -j DROP} (logged, rate limited)[cite: 1].
+  \item \textbf{Permit staff \(\rightarrow\) named service:} \texttt{-s STAFF\_NET -p tcp --dport PORT -j ACCEPT}[cite: 1].
+  \item \textbf{Block all other inbound access to the service:} \texttt{-p tcp --dport PORT -j DROP}[cite: 1].
+\end{enumerate}
+\begin{lstlisting}
+iptables -A RECORDS_FILTER -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -A RECORDS_FILTER -s $GUEST_NET -j DROP
+iptables -A RECORDS_FILTER -s \(STAFF_NET -p tcp --dport\)SERVICE_PORT \
+         -m conntrack --ctstate NEW -j ACCEPT
+iptables -A RECORDS_FILTER -p tcp --dport $SERVICE_PORT -j DROP
+iptables -A RECORDS_FILTER -j RETURN
+iptables -I INPUT 1 -j RECORDS_FILTER
+\end{lstlisting}
+
+\subsection{Test procedure and results}
+One permitted and two blocked connections were tested with \texttt{nc -zv -w 5 SERVER\_IP PORT}[cite: 1].
+\begin{center}
+\begin{tabular}{@{}llp{3.3cm}p{4.5cm}@{}}
+\toprule
+Test & Source & Expected & Actual\\ \midrule
+T1 permitted & Staff client & Connection succeeds & Connection to 192.168.100.10 port 443 succeeded!\\
+T2 blocked & Guest client & Timeout / dropped & nc: connect to 192.168.100.10 port 443 timed out\\
+T3 blocked & Other client & Timeout / dropped & nc: connect to 192.168.100.10 port 443 timed out\\ \bottomrule
+\end{tabular}
+\end{center}
+
+%---------------------------------------------------------------------
+\section{Conclusion}\label{sec:conclusion}
+The assessment ranked weak passwords, guest access to the records server, and unencrypted transfers as the main risks[cite: 1].
+The toolkit addresses the last two directly: authenticated AES-256-GCM encryption protects files in transit and at rest, SHA-256
+baselines detect tampering, and the firewall removes the guest path to the server while limiting the service to the staff
+network[cite: 1]. Weak passwords are addressed by policy and MFA, which are organisational controls outside the code[cite: 1]. Limitations: the key must
+be distributed securely between campuses (a key-management system would be needed at scale), and firewall rules cover only
+the tested service[cite: 1]. Future work: automated patching, centralised logging and intrusion detection[cite: 1].
+
+\medskip
+\noindent\textbf{GitHub repository:} \repourl
+
+\end{document}

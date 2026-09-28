@@ -1,0 +1,56 @@
+=== 1. Generate key (stored outside repo) ===
+=== 2. Encrypt sample student record file ===
+
+$ python3 src/secure_records.py --key-path /tmp/demo_keys/records.key encrypt data/sample_students.csv /tmp/tmp.fzqK2kUnGZ/students.enc
+[OK] Encrypted data/sample_students.csv -> /tmp/tmp.fzqK2kUnGZ/students.enc
+     Plaintext SHA-256: df749f57bf7f8e53593ebe7f7f977998f9da196c671e884aaa15c9dc7a526423
+(exit code: 0)
+
+$ od -An -tx1 -N32 /tmp/tmp.fzqK2kUnGZ/students.enc
+ 55 4c 4b 31 17 b9 5b 40 fa 0b 95 a5 51 4a af 47
+ 05 a7 78 07 95 7b f4 6d 77 74 be e6 63 7e 40 cd
+(exit code: 0)
+=== 3. Decrypt and verify against original ===
+
+$ python3 src/secure_records.py --key-path /tmp/demo_keys/records.key decrypt /tmp/tmp.fzqK2kUnGZ/students.enc /tmp/tmp.fzqK2kUnGZ/students_decrypted.csv --original data/sample_students.csv
+[OK] Decrypted /tmp/tmp.fzqK2kUnGZ/students.enc -> /tmp/tmp.fzqK2kUnGZ/students_decrypted.csv
+     Plaintext SHA-256: df749f57bf7f8e53593ebe7f7f977998f9da196c671e884aaa15c9dc7a526423
+     Original  SHA-256: df749f57bf7f8e53593ebe7f7f977998f9da196c671e884aaa15c9dc7a526423
+[OK] MATCH: decrypted file is identical to the original.
+(exit code: 0)
+=== 4. SHA-256 baseline and change detection ===
+
+$ python3 src/secure_records.py --key-path /tmp/demo_keys/records.key hash /tmp/tmp.fzqK2kUnGZ/students_live.csv --baseline /tmp/tmp.fzqK2kUnGZ/hashes.json
+[OK] SHA-256(/tmp/tmp.fzqK2kUnGZ/students_live.csv) = df749f57bf7f8e53593ebe7f7f977998f9da196c671e884aaa15c9dc7a526423
+     Stored in /tmp/tmp.fzqK2kUnGZ/hashes.json
+(exit code: 0)
+
+$ python3 src/secure_records.py --key-path /tmp/demo_keys/records.key check /tmp/tmp.fzqK2kUnGZ/students_live.csv --baseline /tmp/tmp.fzqK2kUnGZ/hashes.json
+     Expected: df749f57bf7f8e53593ebe7f7f977998f9da196c671e884aaa15c9dc7a526423
+     Current : df749f57bf7f8e53593ebe7f7f977998f9da196c671e884aaa15c9dc7a526423
+[OK] UNCHANGED: file integrity verified.
+(exit code: 0)
+(file modified: one record appended)
+
+$ python3 src/secure_records.py --key-path /tmp/demo_keys/records.key check /tmp/tmp.fzqK2kUnGZ/students_live.csv --baseline /tmp/tmp.fzqK2kUnGZ/hashes.json
+     Expected: df749f57bf7f8e53593ebe7f7f977998f9da196c671e884aaa15c9dc7a526423
+     Current : 8dfae0edb9b29f3c01ea70236be8c44f678e850336d5e967f9887df6ff75e204
+[ALERT] MODIFIED: file has changed since the baseline was recorded!
+(exit code: 2)
+=== 5. Error handling ===
+
+$ python3 src/secure_records.py --key-path /tmp/demo_keys/records.key encrypt does_not_exist.csv /tmp/tmp.fzqK2kUnGZ/x.enc
+[ERROR] File not found: does_not_exist.csv
+(exit code: 1)
+
+$ python3 src/secure_records.py --key-path /nonexistent.key decrypt /tmp/tmp.fzqK2kUnGZ/students.enc /tmp/tmp.fzqK2kUnGZ/x.csv
+[ERROR] File not found: /nonexistent.key
+(exit code: 1)
+
+$ python3 src/secure_records.py --key-path /tmp/demo_keys/records.key decrypt /tmp/tmp.fzqK2kUnGZ/bad.enc /tmp/tmp.fzqK2kUnGZ/x.csv
+[ERROR] /tmp/tmp.fzqK2kUnGZ/bad.enc is not a valid encrypted file (wrong format or truncated).
+(exit code: 1)
+
+$ python3 src/secure_records.py --key-path /tmp/demo_keys/records.key encrypt /tmp/tmp.fzqK2kUnGZ/empty.csv /tmp/tmp.fzqK2kUnGZ/x.enc
+[ERROR] Input file is empty: /tmp/tmp.fzqK2kUnGZ/empty.csv
+(exit code: 1)
