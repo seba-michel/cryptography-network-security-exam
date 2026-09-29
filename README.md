@@ -5,7 +5,7 @@ ETTCS801 – Cryptography and Network Security · ULK Polytechnic Institute · I
 A small security toolkit for a polytechnic's student-records scenario:
 risk assessment, an AES-256-GCM + SHA-256 Python tool, laboratory firewall rules, and a LaTeX report.
 
-> **Author:** `<ERIC UWITONZE + 4202670055>`  ·  **Repository:** `<YOUR GITHUB URL>`
+> **Author:** `<seba michel>`  ·  **Repository:** `<https://github.com/seba-michel/cryptography-network-security-exam>`
 
 ## Project structure
 
@@ -34,7 +34,7 @@ cryptography-network-security-exam/
 Requires Python 3.9+.
 
 ```bash
-git clone <YOUR GITHUB URL>
+git clone <https://github.com/seba-michel/cryptography-network-security-exam>
 cd cryptography-network-security-exam
 python3 -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
